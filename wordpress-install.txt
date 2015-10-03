@@ -1,0 +1,107 @@
+Steps for installing WordPress on Ubuntu
+
+1. Create database and user
+mysql -u root -p
+CREATE DATABASE %db%;
+CREATE USER %user%@localhost IDENTIFIED BY '%password%';
+GRANT ALL PRIVILEGES ON %db%.* TO %user%@localhost;
+FLUSH PRIVILEGES;
+EXIT
+
+2. Download WordPress
+< Change directory to the parent of the WordPress directory you want to create >
+wget http://wordpress.org/latest.tar.gz
+tar xzvf latest.tar.gz
+< Rename the wordpress folder >
+
+3. Update PHP's SSH library (probably don't need to do this every time)
+sudo apt-get update
+sudo apt-get install php5-gd libssh2-php
+
+4. Begin WordPress configuration
+< Change directory to the WordPress directory >
+cp wp-config-sample.php wp-config.php
+< Edit the newly created wp-config.php to add the database credentials >
+***** TO-DO: Move the database credentials to a different script outside *****
+***** the WordPress hierarchy. Include it into this config script.       *****
+mkdir %wordpressdirectory%/wp-content/uploads
+sudo chown -R :www-data %wordpressdirectory%/wp-content/uploads
+
+5. Configure Apache to serve WordPress installation
+< Edit /etc/hosts to add a new %ipaddress% and %localdomain% for the installation >
+< Create a new file in /etc/apache2/sites-available named %localdomain%.conf as follows >
+<VirtualHost *:80>
+  ServerAdmin %email%
+  ServerName %localdomain%
+
+  DocumentRoot %wordpressdirectory%
+  <Directory %wordpressdirectory%>
+    AllowOverride All
+    Require all granted
+    Allow from All
+  </Directory>
+
+  ErrorLog %wordpressdirectory%/log/apache_error.l$
+  CustomLog %wordpressdirectory%/log/project_acces$
+</VirtualHost>
+sudo a2ensite %localdomain%.conf
+sudo service apache2 restart
+
+6. Complete WordPress configuration
+< Navigate to %localdomain%, fill in the fields, and run the installation >
+< Create a new file in %wordpressdirectory% named .htaccess as follows >
+# BEGIN WordPress
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+
+# END WordPress
+
+sudo chown :www-data %wordpressdirectory%/.htaccess
+***** TO-DO: Is this undone in step 7 below? Do we need to do this here? *****
+chmod 644 %wordpressdirectory%/.htaccess
+
+7. Secure WordPress
+sudo adduser %site%wpuser
+< Assign a password, enter information as prompted (or don't) >
+sudo chown %site%wpuser:%site%wpuser %wordpressdirectory%
+sudo su - %site%wpuser
+ssh-keygen -t rsa -b 4096
+/home/%site%wpuser/wp_rsa
+< Assign a password (or don't) >
+exit
+sudo chown %site%wpuser:www-data /home/%site%wpuser/wp_rsa*
+sudo chmod 0640 /home/%site%wpuser/wp_rsa*
+sudo mkdir /home/%site%wpuser/wp_rsa*
+sudo chown %site%wpuser:%site%wpuser /home/%site%wpuser/wp_rsa*
+sudo chmod 0700 /home/%site%wpuser/wp_rsa*
+sudo cp /home/%site%wpuser/wp_rsa.pub /home/%site%wpuser/.ssh/authorized_keys
+sudo chown %site%wpuser:%site%wpuser /home/%site%wpuser/.ssh/authorized_keys
+sudo chmod 0644 /home/%site%wpuser/.ssh/authorized_keys
+sudo nano /home/%site%wpuser/.ssh/authorized_keys
+< Add 'from="%ipaddress%" ' to the beginning of the file before the ssh data >
+sudo apt-get update
+sudo apt-get install php5-dev libssh2-1-dev libssh2-php
+sudo nanp %wordpressdirectory%/wp-config.php
+< Add the following at the end of the file:
+define('FTP_PUBKEY','/home/%site%wpuser/wp_rsa.pub');
+define('FTP_PRIKEY','/home/%site%wpuser/wp_rsa');
+define('FTP_USER','%site%wpuser');
+define('FTP_PASS','');
+define('FTP_HOST','%ipaddress%:22'); >
+sudo service apache2 restart
+
+
+Sources
+- https://www.digitalocean.com/community/tutorials/how-to-install-wordpress-on-ubuntu-14-04
+- https://www.digitalocean.com/community/tutorials/how-to-set-up-apache-virtual-hosts-on-ubuntu-14-04-lts
+- https://www.digitalocean.com/community/tutorials/how-to-configure-secure-updates-and-installations-in-wordpress-on-ubuntu
+
+FTP Server:
+- https://help.ubuntu.com/lts/serverguide/ftp-server.html
