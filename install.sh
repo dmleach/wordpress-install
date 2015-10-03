@@ -145,4 +145,22 @@ print "WordPress installation" "underline"
 # -N option prevents downloading the file again if the remote is no newer
 wpcliname="wp-cli.phar"
 wget -qN https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/$wpcliname
-php $wpcliname core install --path=$wpsitedir --debug --title=$sitename --admin_user=cincwp --admin_password="$(openssl rand -base64 10)" --admin_email=$adminemail
+
+wpcliconfig="wp-cli.local.yml"
+wpadminuser="cincwp"
+wpadminpassword="$(openssl rand -base64 10)"
+
+# Build the YML file used by the CLI program
+echo "path: "$wpsitedir > $wpcliconfig
+echo "user: "$wpadminuser >> $wpcliconfig
+echo "color: true" >> $wpcliconfig
+echo "debug: true" >> $wpcliconfig
+echo "" >> $wpcliconfig
+echo "core install:" >> $wpcliconfig
+echo "	url: http://programming/"$site >> $wpcliconfig
+echo "	title: "$sitename >> $wpcliconfig
+echo "	admin_user: "$wpadminuser >> $wpcliconfig
+echo "	admin_password: "$wpadminpassword >> $wpcliconfig
+echo "	admin_email: "$adminemail >> $wpcliconfig
+
+php $wpcliname core install
