@@ -1,4 +1,6 @@
 #!/bin/bash
+adminemail=dave@daveleach.work
+
 function print () {
     # Was a second parameter provided? (Is $2 zero length)
     if [ -z $2 ]
@@ -53,8 +55,13 @@ sitemysqlpassword="$(openssl rand -base64 10)"
 sitemysqlscript=$site".sql"
 sitemysqluser=$site"user"
 
-# Create a script file with the MySql commands
-echo "CREATE DATABASE IF NOT EXISTS "$sitemysqldb";" > $sitemysqlscript
+# Create a script file with the MySql commands. Since there is no DROP USER
+# IF EXISTS syntax in MySQL, granting usage to the user adds a record if one
+# doesn't already exist. We can then drop the user with no error
+echo "GRANT USAGE ON *.* TO '"$sitemysqluser"'@'localhost' IDENTIFIED BY 'password';" > $sitemysqlscript
+echo "DROP USER '"$sitemysqluser"'@'localhost';" >> $sitemysqlscript
+echo "DROP DATABASE IF EXISTS "$sitemysqldb";" >> $sitemysqlscript
+echo "CREATE DATABASE "$sitemysqldb";" >> $sitemysqlscript
 echo "GRANT ALL PRIVILEGES ON "$sitemysqldb".* TO "$sitemysqluser"@localhost IDENTIFIED BY '"$sitemysqlpassword"';" >> $sitemysqlscript
 echo "FLUSH PRIVILEGES;" >> $sitemysqlscript
 
@@ -102,23 +109,23 @@ fi
 
 # Check to see if the wp-config file already exists
 if [ -e $wpconfigpath ]
-then echo "wp-config file already exists"
-else
-    # Create the wp-config file with values for the site
-    echo "<?php" > $wpconfigpath
-    echo "" >> $wpconfigpath
-    echo "define('DB_NAME', '"$sitemysqldb"');" >> $wpconfigpath
-    echo "define('DB_USER', '"$sitemysqluser"');" >> $wpconfigpath
-    echo "define('DB_PASSWORD', '"$sitemysqlpassword"');" >> $wpconfigpath
-    echo "define('DB_HOST', 'localhost');" >> $wpconfigpath
-    echo "define('DB_CHARSET', 'utf8mb4');" >> $wpconfigpath
-    echo "define('DB_COLLATE', 'utf8mb4_general_ci');" >> $wpconfigpath
-    echo "" >> $wpconfigpath
-    curl -s 1 https://api.wordpress.org/secret-key/1.1/salt >> $wpconfigpath
-    echo "" >> $wpconfigpath
-    echo "\$table_prefix  = 'tbl_';" >> $wpconfigpath
-    echo "define('WP_DEBUG', true);" >> $wpconfigpath
+then rm $wpconfigpath
 fi
+
+# Create the wp-config file with values for the site
+echo "<?php" > $wpconfigpath
+echo "" >> $wpconfigpath
+echo "define('DB_NAME', '"$sitemysqldb"');" >> $wpconfigpath
+echo "define('DB_USER', '"$sitemysqluser"');" >> $wpconfigpath
+echo "define('DB_PASSWORD', '"$sitemysqlpassword"');" >> $wpconfigpath
+echo "define('DB_HOST', 'localhost');" >> $wpconfigpath
+echo "define('DB_CHARSET', 'utf8mb4');" >> $wpconfigpath
+echo "define('DB_COLLATE', 'utf8mb4_general_ci');" >> $wpconfigpath
+echo "" >> $wpconfigpath
+curl -s 1 https://api.wordpress.org/secret-key/1.1/salt >> $wpconfigpath
+echo "" >> $wpconfigpath
+echo "\$table_prefix  = 'tbl_';" >> $wpconfigpath
+echo "define('WP_DEBUG', true);" >> $wpconfigpath
 
 # Create a wp-config file in the site's directory that redirects to the
 # real one in the config directory
@@ -129,3 +136,13 @@ echo "    define('ABSPATH', dirname(__FILE__) . '/');" >> $wpconfigredirect
 echo "/** Location of your WordPress configuration. */" >> $wpconfigredirect
 echo "require_once(dirname(dirname(__FILE__)) . '/newsite.config/wp-config.php');" >> $wpconfigredirect
 echo "require_once(ABSPATH . 'wp-settings.php');" >> $wpconfigredirect
+
+##### WORDPRESS INSTALLATION #####
+print ""
+print "WordPress installation" "underline"
+
+# Download the file and create a link to the local version. The link and
+# -N option prevents downloading the file again if the remote is no newer
+wpcliname="wp-cli.phar"
+wget -qN https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/$wpcliname
+php $wpcliname core install --path=$wpsitedir --debug --title=$sitename --admin_user=cincwp --admin_password="$(openssl rand -base64 10)" --admin_email=$adminemail
