@@ -22,8 +22,8 @@ function installpackage() {
 }
 
 print "WordPress installation" "bold"
-print ""
 
+print ""
 print "Site name" "underline"
 print "This script refers to the new WordPress site by a single, short"
 print "string that will be used to name the installation directory,"
@@ -34,24 +34,24 @@ read site
 print "In what directory should the new WordPress folder be created?"
 print "(e.g. to install to /files/wp/"$site", enter '/files/wp')"
 read rootdir
-print ""
 
 ##### PACKAGE INSTALLATION #####
-print "Installing needed packages" "underline"
 print ""
+print "Installing needed packages" "underline"
+
 installpackage "php5-gd"
 installpackage "libssh2-php"
 
 ##### MYSQL DATABASE CREATION #####
+print ""
+print "MySQL database" "underline"
+print "Creating a new MySQL database named "$sitemysqldb
+
 # Initialize variables
 sitemysqldb=$site"wpdb"
 sitemysqlpassword="$(openssl rand -base64 10)"
 sitemysqlscript=$site".sql"
 sitemysqluser=$site"user"
-
-print "MySQL database" "underline"
-print "Creating a new MySQL database named "$sitemysqldb
-print ""
 
 # Create a script file with the MySql commands
 echo "CREATE DATABASE IF NOT EXISTS "$sitemysqldb";" > $sitemysqlscript
@@ -66,9 +66,9 @@ trap "rm "$sitemysqlscript EXIT
 mysql -u root < $sitemysqlscript
 
 ##### WORDPRESS DOWNLOAD #####
+print ""
 print "WordPress download" "underline"
 print "Downloading latest WordPress installation"
-print ""
 
 # Initialize variables
 wpsitedir=$rootdir"/"$site
@@ -86,9 +86,9 @@ fi
 tar xzf latest.tar.gz --directory $wpsitedir --strip-components=1
 
 ##### WORDPRESS CONFIGURATION #####
+print ""
 print "WordPress configuration" "underline"
 print "Creating configuration files"
-print ""
 
 # Initialize variables
 wpconfigdir=$wpsitedir".config"
@@ -100,20 +100,25 @@ if ! [ -d $wpconfigdir ]
 then mkdir $wpconfigdir
 fi
 
-# Create the wp-config file with values for the site
-echo "<?php" > $wpconfigpath
-echo "" >> $wpconfigpath
-echo "define('DB_NAME', '"$sitemysqldb"');" >> $wpconfigpath
-echo "define('DB_USER', '"$sitemysqluser"');" >> $wpconfigpath
-echo "define('DB_PASSWORD', '"$sitemysqlpassword"');" >> $wpconfigpath
-echo "define('DB_HOST', 'localhost');" >> $wpconfigpath
-echo "define('DB_CHARSET', 'utf8mb4');" >> $wpconfigpath
-echo "define('DB_COLLATE', 'utf8mb4_general_ci');" >> $wpconfigpath
-echo "" >> $wpconfigpath
-curl -s 1 https://api.wordpress.org/secret-key/1.1/salt >> $wpconfigpath
-echo "" >> $wpconfigpath
-echo "$table_prefix  = 'tbl_';" >> $wpconfigpath
-echo "define('WP_DEBUG', true);" >> $wpconfigpath
+# Check to see if the wp-config file already exists
+if [ -e $wpconfigpath ]
+then echo "wp-config file already exists"
+else
+    # Create the wp-config file with values for the site
+    echo "<?php" > $wpconfigpath
+    echo "" >> $wpconfigpath
+    echo "define('DB_NAME', '"$sitemysqldb"');" >> $wpconfigpath
+    echo "define('DB_USER', '"$sitemysqluser"');" >> $wpconfigpath
+    echo "define('DB_PASSWORD', '"$sitemysqlpassword"');" >> $wpconfigpath
+    echo "define('DB_HOST', 'localhost');" >> $wpconfigpath
+    echo "define('DB_CHARSET', 'utf8mb4');" >> $wpconfigpath
+    echo "define('DB_COLLATE', 'utf8mb4_general_ci');" >> $wpconfigpath
+    echo "" >> $wpconfigpath
+    curl -s 1 https://api.wordpress.org/secret-key/1.1/salt >> $wpconfigpath
+    echo "" >> $wpconfigpath
+    echo "\$table_prefix  = 'tbl_';" >> $wpconfigpath
+    echo "define('WP_DEBUG', true);" >> $wpconfigpath
+fi
 
 # Create a wp-config file in the site's directory that redirects to the
 # real one in the config directory
@@ -122,4 +127,5 @@ echo "/** Absolute path to the WordPress directory. */" >> $wpconfigredirect
 echo "if ( !defined('ABSPATH') )" >> $wpconfigredirect
 echo "    define('ABSPATH', dirname(__FILE__) . '/');" >> $wpconfigredirect
 echo "/** Location of your WordPress configuration. */" >> $wpconfigredirect
-echo "require_once(ABSPATH . '../"$site".config/wp-config.php');" >> $wpconfigredirect
+echo "require_once(dirname(dirname(__FILE__)) . '/newsite.config/wp-config.php');" >> $wpconfigredirect
+echo "require_once(ABSPATH . 'wp-settings.php');" >> $wpconfigredirect
