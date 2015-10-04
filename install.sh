@@ -147,20 +147,44 @@ wpcliname="wp-cli.phar"
 wget -qN https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/$wpcliname
 
 wpcliconfig="wp-cli.local.yml"
-wpadminuser="cincwp"
+wpurl="http://programming/"$site
+wpadminuser="cinc"$site
 wpadminpassword="$(openssl rand -base64 10)"
+wpeditoruser=$site
+wpeditorpassword="$(openssl rand -base64 10)"
 
 # Build the YML file used by the CLI program
 echo "path: "$wpsitedir > $wpcliconfig
 echo "user: "$wpadminuser >> $wpcliconfig
 echo "color: true" >> $wpcliconfig
 echo "debug: true" >> $wpcliconfig
+echo "quiet: true" >> $wpcliconfig
 echo "" >> $wpcliconfig
 echo "core install:" >> $wpcliconfig
-echo "	url: http://programming/"$site >> $wpcliconfig
+echo "	url: "$wpurl >> $wpcliconfig
 echo "	title: "$sitename >> $wpcliconfig
 echo "	admin_user: "$wpadminuser >> $wpcliconfig
 echo "	admin_password: "$wpadminpassword >> $wpcliconfig
 echo "	admin_email: "$adminemail >> $wpcliconfig
+echo "" >> $wpcliconfig
+echo "plugin update:" >> $wpcliconfig
+echo "	all: true" >> $wpcliconfig
+echo "" >> $wpcliconfig
+echo "user create:" >> $wpcliconfig
+echo "  role: editor" >> $wpcliconfig
 
+print "Installing WordPress"
 php $wpcliname core install
+print "Updating plugins"
+php $wpcliname plugin update
+print "Creating users"
+php $wpcliname user create $wpeditoruser $adminemail
+
+##### SUCCESS #####
+print ""
+print "Installation successful" "bold"
+print "Access the new site at:"
+print "  "$wpurl
+print "User accounts and passwords are:"
+print "  Administrator: "$wpadminuser", "$wpadminpassword
+print "  Editor: "$wpeditoruser", "$wpeditorpassword
